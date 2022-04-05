@@ -36,7 +36,7 @@ services:
         max-size: 1m
 
   minecraft:
-    image: openjdk:8u322
+    image: openjdk:8
     hostname: minecraft
     container_name: minecraft_nsvr__minecraft
     stdin_open: true
