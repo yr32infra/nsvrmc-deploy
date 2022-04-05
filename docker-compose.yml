@@ -1,0 +1,237 @@
+version: '3.8'
+
+services:
+  dailybackup:
+    image: debian:stable-20220328-slim
+    hostname: dailybackup
+    container_name: minecraft_nsvr__dailybackup
+
+    restart: unless-stopped
+
+    user: "1002:1002"
+
+    volumes:
+      - type: bind
+        source: .
+        target: /mc/
+
+    working_dir: "/mc/"
+
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "while : ; do tar czf `date +%F_%H-%M-%S`.tar.gz ./world/; sleep 86400; done"
+
+    network_mode: none
+
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+    logging:
+      driver: json-file
+      options:
+        max-file: '1'
+        max-size: 1m
+
+  minecraft:
+    image: openjdk:8u322
+    hostname: minecraft
+    container_name: minecraft_nsvr__minecraft
+    stdin_open: true
+    tty: true
+
+    user: "1002:1002"
+
+    restart: unless-stopped
+
+    ports:
+      - 25565:25565
+      - 127.0.0.1:9191:9191
+
+    networks:
+      minecraft_internet:
+      minecraft_prometheus:
+
+    logging:
+      driver: json-file
+      options:
+        max-file: '16'
+        max-size: 1m
+
+    volumes:
+      - type: bind
+        source: .
+        target: /mc/
+
+    working_dir: "/mc/"
+    command: [
+      "java",
+      "-Dcom.sun.management.jmxremote",
+      "-Dcom.sun.management.jmxremote.port=9191",
+      "-Dcom.sun.management.jmxremote.ssl=false",
+      "-Dcom.sun.management.jmxremote.authenticate=false",
+      "-XX:+UnlockExperimentalVMOptions",
+      "-XX:MaxRAMFraction=2",
+      "-XX:+UseG1GC",
+      "-Xms12G",
+      "-Xmx12G",
+      "-XX:ConcGCThreads=3",
+      "-jar",
+      "forge-1.12.2-14.23.5.2859.jar",
+      "nogui"
+    ]
+
+
+  prometheus:
+    image: prom/prometheus:v2.34.0
+    hostname: prometheus
+    container_name: minecraft_nsvr__prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=1y'
+      - '--web.enable-lifecycle'
+      - '--web.listen-address=0.0.0.0:9090'
+
+    restart: unless-stopped
+
+    depends_on:
+      - minecraft
+
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+    networks:
+      minecraft_prometheus:
+      prometheus_grafana:
+
+    logging:
+      driver: json-file
+      options:
+        max-file: '1'
+        max-size: 1m
+
+    ports:
+      - 9090:9090
+
+    volumes:
+      - type: bind
+        source: ./prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+
+      - type: volume
+        source: prometheus_data
+        target: /prometheus
+
+  grafana:
+    image: grafana/grafana:8.4.5
+
+    hostname: grafana
+    container_name: minecraft_nsvr__grafana
+
+    restart: unless-stopped
+
+    depends_on:
+      - prometheus
+
+    volumes:
+      - type: volume
+        source: grafana_data
+        target: /var/lib/grafana
+
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_SECURITY_ADMIN_USER: ${ADMIN_USERNAME}
+      GF_SECURITY_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_USERS_ALLOW_ORG_CREATE: 'false'
+      GF_SERVER_ROOT_URL: ${GRAFANA_SERVER_ROOT_URL}
+      GF_LOG_FILTERS: rendering:debug
+
+    networks:
+      prometheus_grafana:
+      grafana_internet:
+      grafana_cloudflared:
+
+    logging:
+      driver: json-file
+      options:
+        max-file: '1'
+        max-size: 1m
+
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  cloudflared:
+    image: crazymax/cloudflared:2022.3.4
+
+    hostname: cloudflared
+    container_name: minecraft_nsvr__cloudflared
+
+    restart: unless-stopped
+
+    depends_on:
+      - grafana
+
+    environment:
+      TUNNEL_URL: http://grafana:3000
+      TUNNEL_HOSTNAME: ${GRAFANA_SERVER_ROOT_URL}
+      TUNNEL_LOGFILE: /dev/stdout
+
+    command: 'tunnel'
+    user: root
+
+    volumes:
+      - type: bind
+        source: /etc/cloudflared/cert.pem
+        target: /etc/cloudflared/cert.pem
+        read_only: true
+
+    networks:
+      grafana_cloudflared:
+      cloudflared_internet:
+
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+    logging:
+      driver: json-file
+      options:
+        max-file: '1'
+        max-size: 1m
+
+networks:
+  minecraft_internet:
+    name: minecraft_nsvr__minecraft_internet
+  minecraft_prometheus:
+    name: minecraft_nsvr__minecraft_prometheus
+    internal: true
+  prometheus_grafana:
+    name: minecraft_nsvr__prometheus_grafana
+    internal: true
+  grafana_internet:
+    name: minecraft_nsvr__grafana_internet
+  grafana_cloudflared:
+    name: minecraft_nsvr__grafana_cloudflared
+    internal: true
+  cloudflared_internet:
+    name: minecraft_nsvr__cloudflared_internet
+
+volumes:
+  grafana_data:
+    name: minecraft_nsvr__grafana_data
+  prometheus_data:
+    name: minecraft_nsvr__prometheus_data
+
