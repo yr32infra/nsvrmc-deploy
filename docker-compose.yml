@@ -95,7 +95,7 @@ services:
 
 
   prometheus:
-    image: prom/prometheus:v2.34.0
+    image: prom/prometheus:v2.35.0
     hostname: prometheus
     container_name: minecraft_nsvr__prometheus
 
@@ -142,7 +142,7 @@ services:
         target: /prometheus
 
   grafana:
-    image: grafana/grafana:8.4.5
+    image: grafana/grafana:8.5.1
 
     hostname: grafana
     container_name: minecraft_nsvr__grafana
