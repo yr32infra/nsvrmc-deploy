@@ -20,7 +20,7 @@ services:
     command:
       - "/bin/sh"
       - "-c"
-      - "while : ; do tar czf `date +%F_%H-%M-%S`.tar.gz ./world/; sleep 86400; done"
+      - "while : ; do tar czf `date +%F_%H-%M-%S`.tar.gz ./world/; sleep 21600; done"
 
     network_mode: none
 
@@ -68,16 +68,26 @@ services:
     working_dir: "/mc/"
     command: [
       "java",
+      "-Xms12G",
+      "-Xmx12G",
+      "-XX:+AggressiveOpts",
+      "-XX:+AlwaysPreTouch",
+      "-XX:+DisableExplicitGC",
+      "-XX:+ParallelRefProcEnabled",
+      "-XX:+UseStringDeduplication",
+      "-XX:+UseCompressedOops",
+      "-XX:ParallelGCThreads=3",
+      "-XX:ConcGCThreads=3",
+      "-XX:+UseG1GC",
+      "-XX:MaxGCPauseMillis=100",
+      "-XX:InitiatingHeapOccupancyPercent=30",
+      "-XX:G1ReservePercent=30",
       "-Dcom.sun.management.jmxremote",
       "-Dcom.sun.management.jmxremote.port=9191",
       "-Dcom.sun.management.jmxremote.ssl=false",
       "-Dcom.sun.management.jmxremote.authenticate=false",
       "-XX:+UnlockExperimentalVMOptions",
       "-XX:MaxRAMFraction=2",
-      "-XX:+UseG1GC",
-      "-Xms12G",
-      "-Xmx12G",
-      "-XX:ConcGCThreads=3",
       "-jar",
       "forge-1.12.2-14.23.5.2859.jar",
       "nogui"
