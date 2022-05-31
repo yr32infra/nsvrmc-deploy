@@ -142,7 +142,7 @@ services:
         target: /prometheus
 
   grafana:
-    image: grafana/grafana:8.5.3
+    image: grafana/grafana:8.5.4
 
     hostname: grafana
     container_name: minecraft_nsvr__grafana
