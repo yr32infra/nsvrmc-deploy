@@ -95,7 +95,7 @@ services:
 
 
   prometheus:
-    image: prom/prometheus:v2.36.0
+    image: prom/prometheus:v2.36.1
     hostname: prometheus
     container_name: minecraft_nsvr__prometheus
 
