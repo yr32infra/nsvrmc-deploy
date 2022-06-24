@@ -36,7 +36,7 @@ services:
         max-size: 1m
 
   minecraft:
-    image: openjdk:8-jre@sha256:d005095f6b9c9f2d03f75942c5e389c34a765d7f53eed3c6b0c7b7317c8a98c7
+    image: openjdk:11-jre@sha256:9d14d6d33770f81daffb72013be08f8c6f3538680f287d4bb1a8f5dcc7a2a497
     hostname: minecraft
     container_name: minecraft_nsvr__minecraft
     stdin_open: true
